@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"sort"
 	"sync"
 
@@ -36,12 +37,20 @@ func (r *MemoryRepository) Read(fn func(*Mutation) error) error {
 	return fn(cloneMutation(r.state))
 }
 
-func (r *MemoryRepository) Mutate(fn func(*Mutation) error) error {
+// Mutate applies fn to a transactional copy and commits it only when fn
+// succeeds and ctx has not been cancelled. The cancellation check and the
+// commit both happen under the same lock hold, so a request cancelled at any
+// point before the commit boundary fails with the context error and leaves
+// the stored state untouched.
+func (r *MemoryRepository) Mutate(ctx context.Context, fn func(*Mutation) error) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	tx := cloneMutation(r.state)
 	if err := fn(tx); err != nil {
+		return err
+	}
+	if err := ctx.Err(); err != nil {
 		return err
 	}
 	r.state = tx.snapshot()
