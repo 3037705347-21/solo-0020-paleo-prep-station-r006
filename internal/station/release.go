@@ -18,7 +18,7 @@ func (s *Service) ReleaseSpecimen(
 	}
 
 	var created domain.ReleaseRecord
-	err := s.repo.Mutate(func(m *repository.Mutation) error {
+	err := s.repo.Mutate(ctx, func(m *repository.Mutation) error {
 		specimen, ok := m.GetSpecimen(specimenID)
 		if !ok {
 			return notFoundSpecimen(specimenID)

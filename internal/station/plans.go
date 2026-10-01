@@ -18,7 +18,7 @@ func (s *Service) CreatePlan(
 	}
 
 	var created domain.PrepPlan
-	err := s.repo.Mutate(func(m *repository.Mutation) error {
+	err := s.repo.Mutate(ctx, func(m *repository.Mutation) error {
 		specimen, ok := m.GetSpecimen(specimenID)
 		if !ok {
 			return notFoundSpecimen(specimenID)
@@ -59,7 +59,7 @@ func (s *Service) ApprovePlan(
 	}
 
 	var approved domain.PrepPlan
-	err := s.repo.Mutate(func(m *repository.Mutation) error {
+	err := s.repo.Mutate(ctx, func(m *repository.Mutation) error {
 		plan, ok := m.GetPlan(planID)
 		if !ok {
 			return notFoundPlan(planID)

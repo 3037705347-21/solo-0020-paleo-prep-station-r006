@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"sort"
 	"sync"
 
@@ -36,14 +37,35 @@ func (r *MemoryRepository) Read(fn func(*Mutation) error) error {
 	return fn(cloneMutation(r.state))
 }
 
-func (r *MemoryRepository) Mutate(fn func(*Mutation) error) error {
+// Mutate runs fn against an isolated copy of the current state and publishes it
+// atomically. The context is the cancellation boundary: a request that is
+// canceled before the snapshot is published fails with the context error and
+// leaves the committed state untouched, including requests that were canceled
+// while waiting for the mutex.
+func (r *MemoryRepository) Mutate(ctx context.Context, fn func(*Mutation) error) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
 	r.mu.Lock()
 	defer r.mu.Unlock()
+
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 
 	tx := cloneMutation(r.state)
 	if err := fn(tx); err != nil {
 		return err
 	}
+
+	// Last cancellation gate immediately before crossing the success
+	// boundary: on cancellation the mutated copy is simply dropped, so the
+	// committed state is unchanged.
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
 	r.state = tx.snapshot()
 	return nil
 }

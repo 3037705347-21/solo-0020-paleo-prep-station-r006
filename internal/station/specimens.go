@@ -17,7 +17,7 @@ func (s *Service) RegisterSpecimen(
 	}
 
 	var created domain.Specimen
-	err := s.repo.Mutate(func(m *repository.Mutation) error {
+	err := s.repo.Mutate(ctx, func(m *repository.Mutation) error {
 		value, err := domain.NewSpecimen(
 			s.nextID("specimen"),
 			request.CatalogNumber,
